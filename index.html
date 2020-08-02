@@ -4,9 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Flappy Bird - Moreno</title>
+    <script src="./jogo.js"></script>
 </head>
-<body>
-    <canvas id="game-canvas" width="320" height="480"></canvas>
+<body onload="window.mountFlappyBird(document.querySelector('#root'));">
+    <div id="root"></div>
     <style>
         body {
           min-height: 100vh;
@@ -14,13 +15,12 @@
           justify-content: center;
           align-items: center;
         }
-        canvas {
+        #root {
           border: 1px solid #000;
           display: block;
           margin: 0 auto;
+          line-height: 0;
         }
     </style>
-
-    <script src="./jogo.js"></script>
 </body>
 </html> 
