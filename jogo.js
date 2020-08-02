@@ -128,10 +128,15 @@ class FlappyBirdElement{
             height: 24,
             x: 10,
             y: 50,
-            jump: 4.6,
+            jump: 2,
         };
-        this.gravidade = 0.25;
+        this.gravidade = 0.1;
         this.velocidade = 0;
+    }
+    increaseDifficulty(){
+        const proportion = this.player.jump / this.gravidade;
+        this.gravidade += 0.01;
+        this.player.jump = this.gravidade * proportion;
     }
     draw(){
         drawElement(contexto, this.player);
@@ -260,8 +265,99 @@ const mensagemGetReady = new DrawableElement([{
     x: (canvas.width / 2) - 174 / 2,
     y: 50,
 }]);
+const gameOverPosition = {
+    x: (canvas.width / 2) - 226 / 2,
+    y: 50,
+}
+const mensagemGameOver = new DrawableElement([{
+    spriteX: 134,
+    spriteY: 153,
+    width: 226,
+    height: 200,
+    x: gameOverPosition.x,
+    y: gameOverPosition.y,
+}]);
+const medalSizePosition = {
+    width: 44,
+    height: 44,
+    x: gameOverPosition.x + 26,
+    y: gameOverPosition.y + 86,
+}
+const medal = {
+    current: null,
+    easy: new DrawableElement([{
+        ...medalSizePosition,
+        spriteX: 0,
+        spriteY: 78,
+    }]),
+    medium: new DrawableElement([{
+        ...medalSizePosition,
+        spriteX: 48,
+        spriteY: 78,
+    }]),
+    hard: new DrawableElement([{
+        ...medalSizePosition,
+        spriteX: 0,
+        spriteY: 124,
+    }]),
+    best: new DrawableElement([{
+        ...medalSizePosition,
+        spriteX: 48,
+        spriteY: 124,
+    }]),
+};
 
 let telaAtiva = {};
+
+class ScoreElement {
+    constructor({initialValue, x, y, color}){
+        this.value = initialValue;
+        this.x = x;
+        this.y = y;
+        this.color = color;
+    }
+    draw() {
+        contexto.textAlign = "right";
+        contexto.font = "bold 17px Arial";
+        contexto.fillStyle = this.color;
+        contexto.fillText(this.value.toString(), this.x, this.y);
+    }
+}
+class CurrentScoreElement extends ScoreElement {
+    constructor(){
+        super({
+            initialValue: 0,
+            x: 252,
+            y: 145,
+            color: '#ec5140',
+        });
+    }
+    draw() {
+        contexto.textAlign = "right";
+        contexto.font = "bold 17px Arial";
+        contexto.fillStyle = this.color;
+        contexto.fillText(this.value.toString(), this.x, this.y);
+    }
+    drawPlaying() {
+        const centerX = canvas.width / 2;
+        const topY = canvas.height / 6;
+        contexto.textAlign = "center";
+        contexto.font = "bold 45px Arial";
+        contexto.strokeStyle = 'black';
+        contexto.lineWidth = 4;
+        contexto.strokeText(this.value.toString(), centerX, topY);
+        contexto.fillStyle = 'white';
+        contexto.fillText(this.value.toString(), centerX, topY);
+    }
+}
+
+const currentScore = new CurrentScoreElement();
+const bestScore = new ScoreElement({
+    initialValue: 40,
+    x: 252,
+    y: 185,
+    color: '#ec5140',
+});
 
 const Telas = {
     INICIO: {
@@ -278,15 +374,60 @@ const Telas = {
             globais.chao.update();
         },
     },
-    JOGO: {
+    GAME_OVER: {
         start() {
-            globais.flappyBird = new FlappyBirdElement();
-            globais.canos = new CanosElement();
+            this.waitingViewGameOver = true;
+            setTimeout(()=>{
+                this.waitingViewGameOver = false;
+            }, 1000);
         },
         draw() {
             planoDeFundo.draw();
             globais.canos.draw();
             globais.chao.draw();
+            globais.flappyBird.draw();
+            mensagemGameOver.draw();
+            medal.current.draw();
+            currentScore.draw();
+            bestScore.draw();
+        },
+        click() {
+            if(this.waitingViewGameOver){
+                return;
+            }
+            mudaTela(Telas.JOGO);
+        },
+        update() {
+        },
+    },
+    JOGO: {
+        start() {
+            globais.flappyBird = new FlappyBirdElement();
+            globais.canos = new CanosElement();
+            currentScore.value = 0;
+            this.intervalScore = setInterval(()=>{
+                currentScore.value += 1;
+                sounds.scored.play();
+                globais.flappyBird.increaseDifficulty();
+            }, 1000);
+        },
+        end() {
+            clearInterval(this.intervalScore);
+            if(currentScore.value >= bestScore.value){
+                medal.current = medal.best;
+            } else if(currentScore.value >= 30){
+                medal.current = medal.hard;
+            } else if(currentScore.value >= 15){
+                medal.current = medal.medium;
+            } else {
+                medal.current = medal.easy;
+            }
+        },
+        draw() {
+            planoDeFundo.draw();
+            globais.canos.draw();
+            globais.chao.draw();
+            currentScore.drawPlaying();
             globais.flappyBird.draw();
         },
         click() {
@@ -330,7 +471,7 @@ const Telas = {
         update() {
             if (this.hasCollision()){
                 sounds.hit.play();
-                mudaTela(Telas.INICIO);
+                mudaTela(Telas.GAME_OVER);
                 return;
             }
             globais.flappyBird.update();
@@ -356,6 +497,9 @@ window.addEventListener('click', ()=>{
 });
 
 const mudaTela = (novaTela)=>{
+    if(telaAtiva.end) {
+        telaAtiva.end();
+    }
     if(novaTela.start) {
         novaTela.start();
     }
