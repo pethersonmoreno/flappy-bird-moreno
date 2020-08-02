@@ -3,8 +3,34 @@ console.log('[Moreno] Flappy Bird');
 const sprites = new Image();
 sprites.src = './sprites.png';
 
+let timeoutAudio;
+class AudioPlay{
+    constructor(src){
+        this.audio = new Audio(src);
+    }
+    play(){
+        if(timeoutAudio){
+            clearTimeout(timeoutAudio);
+        }
+        timeoutAudio = setTimeout(()=>{
+            this.audio.currentTime = 0;
+            this.audio.play();
+        }, 50);
+    }
+}
+
+const sounds = {
+    hit: new AudioPlay('./efeitos/hit.wav'),
+    fall: new AudioPlay('./efeitos/fall.wav'),
+    scored: new AudioPlay('./efeitos/scored.wav'),
+    jump: new AudioPlay('./efeitos/jump.wav'),
+};
+
 const canvas = document.querySelector('canvas');
 const contexto = canvas.getContext('2d');
+
+const globais = {};
+
 
 const drawElement = (ctx, element) => {
     ctx.drawImage(
@@ -58,22 +84,40 @@ class PlanoDeFundoElement extends DrawableElement{
         super.draw();
     }
 };
-
+const hasCollision = (flappyBird, chao)=>{
+    const flappyBirdY = flappyBird.player.y + flappyBird.player.height;
+    const chaoY = chao.parts[0].y;
+    if( flappyBirdY >= chaoY){
+        return true;
+    }
+    return false;
+};
 class FlappyBirdElement extends DrawableElement{
     constructor(){
-        super([{
+        const player = {
             spriteX: 0,
             spriteY: 0,
             width: 33,
             height: 24,
             x: 10,
             y: 50,
-        }]);
+            jump: 4.6,
+        };
+        super([player]);
+        this.player = player;
         this.gravidade = 0.25;
         this.velocidade = 0;
     }
+    jump() {
+        this.velocidade = -this.player.jump;
+        sounds.jump.play()
+    }
     update(){
+        const oldVelocidade = this.velocidade;
         this.velocidade += this.gravidade;
+        if(oldVelocidade <= 0 && this.velocidade > 0){
+            sounds.fall.play();
+        }
         this.parts[0].y += this.velocidade;
     }
 };
@@ -81,8 +125,6 @@ class FlappyBirdElement extends DrawableElement{
 const planoDeFundo = new PlanoDeFundoElement();
 
 const chao = new DrawableElement([buildChaoPart(0), buildChaoPart(224)]);
-
-const flappyBird = new FlappyBirdElement();
 
 const mensagemGetReady = new DrawableElement([{
     spriteX: 134,
@@ -94,16 +136,13 @@ const mensagemGetReady = new DrawableElement([{
 }]);
 
 let telaAtiva = {};
-const mudaTela = (novaTela)=>{
-    telaAtiva = novaTela;
-};
 
 const Telas = {
     INICIO: {
         draw() {
             planoDeFundo.draw();
             chao.draw();
-            flappyBird.draw();
+            globais.flappyBird.draw();
             mensagemGetReady.draw();
         },
         click() {
@@ -114,13 +153,24 @@ const Telas = {
         },
     },
     JOGO: {
+        start() {
+            globais.flappyBird = new FlappyBirdElement();
+        },
         draw() {
             planoDeFundo.draw();
             chao.draw();
-            flappyBird.draw();
+            globais.flappyBird.draw();
+        },
+        click() {
+            globais.flappyBird.jump();
         },
         update() {
-            flappyBird.update();
+            if (hasCollision(globais.flappyBird, chao)){
+                sounds.hit.play();
+                mudaTela(Telas.INICIO);
+                return;
+            }
+            globais.flappyBird.update();
         },
     }
 }
@@ -138,5 +188,13 @@ window.addEventListener('click', ()=>{
     }
 });
 
+const mudaTela = (novaTela)=>{
+    if(novaTela.start) {
+        novaTela.start();
+    }
+    telaAtiva = novaTela;
+};
+
+globais.flappyBird = new FlappyBirdElement();
 mudaTela(Telas.INICIO);
 loop();
