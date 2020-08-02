@@ -3,6 +3,8 @@ console.log('[Moreno] Flappy Bird');
 const sprites = new Image();
 sprites.src = './sprites.png';
 
+let frames = 0;
+
 let timeoutAudio;
 class AudioPlay{
     constructor(src){
@@ -46,15 +48,6 @@ const draw = function () {
     drawElement(contexto, this)
 };
 
-const buildChaoPart = (x) => ({
-    spriteX: 0,
-    spriteY: 610,
-    width: 224,
-    height: 112,
-    x,
-    y: canvas.height - 112,
-})
-
 class DrawableElement{
     constructor(parts){
         this.parts = parts;
@@ -92,39 +85,78 @@ const hasCollision = (flappyBird, chao)=>{
     }
     return false;
 };
-class FlappyBirdElement extends DrawableElement{
+class FlappyBirdElement{
     constructor(){
-        const player = {
-            spriteX: 0,
-            spriteY: 0,
+        this.moviments = [
+            { spriteX: 0, spriteY: 0, },
+            { spriteX: 0, spriteY: 26, },
+            { spriteX: 0, spriteY: 52, },
+            { spriteX: 0, spriteY: 26, },
+        ]
+        this.currentMoviment = 0;
+        this.player = {
+            ...this.moviments[this.currentMoviment],
             width: 33,
             height: 24,
             x: 10,
             y: 50,
             jump: 4.6,
         };
-        super([player]);
-        this.player = player;
         this.gravidade = 0.25;
         this.velocidade = 0;
+    }
+    draw(){
+        drawElement(contexto, this.player);
     }
     jump() {
         this.velocidade = -this.player.jump;
         sounds.jump.play()
     }
+    updateMoviment(){
+        const framesInterval = 10;
+        const intervalDone = frames%framesInterval===0;
+        if(intervalDone){
+            const repeatAt = this.moviments.length;
+            this.currentMoviment = (this.currentMoviment+1) % repeatAt;
+            this.player = { ...this.player, ...this.moviments[this.currentMoviment] };
+        }
+    }
     update(){
+        this.updateMoviment();
         const oldVelocidade = this.velocidade;
         this.velocidade += this.gravidade;
         if(oldVelocidade <= 0 && this.velocidade > 0){
             sounds.fall.play();
         }
-        this.parts[0].y += this.velocidade;
+        this.player.y += this.velocidade;
     }
 };
 
 const planoDeFundo = new PlanoDeFundoElement();
 
-const chao = new DrawableElement([buildChaoPart(0), buildChaoPart(224)]);
+class ChaoElement extends DrawableElement{
+    constructor(){
+        const part1 = {
+            spriteX: 0,
+            spriteY: 610,
+            width: 224,
+            height: 112,
+            x: 0,
+            y: canvas.height - 112,
+        };
+        const part2 = {
+            ...part1,
+            x: part1.width,
+        };
+        super([part1, part2]);
+    }
+    update(){
+        const moviment = 1;
+        const repeatAt = this.parts[0].width/2;
+        this.parts[0].x = (this.parts[0].x -moviment)%repeatAt;
+        this.parts[1].x = this.parts[0].x+this.parts[0].width;
+    }
+}
 
 const mensagemGetReady = new DrawableElement([{
     spriteX: 134,
@@ -141,7 +173,7 @@ const Telas = {
     INICIO: {
         draw() {
             planoDeFundo.draw();
-            chao.draw();
+            globais.chao.draw();
             globais.flappyBird.draw();
             mensagemGetReady.draw();
         },
@@ -149,7 +181,7 @@ const Telas = {
             mudaTela(Telas.JOGO);
         },
         update() {
-
+            globais.chao.update();
         },
     },
     JOGO: {
@@ -158,19 +190,20 @@ const Telas = {
         },
         draw() {
             planoDeFundo.draw();
-            chao.draw();
+            globais.chao.draw();
             globais.flappyBird.draw();
         },
         click() {
             globais.flappyBird.jump();
         },
         update() {
-            if (hasCollision(globais.flappyBird, chao)){
+            if (hasCollision(globais.flappyBird, globais.chao)){
                 sounds.hit.play();
                 mudaTela(Telas.INICIO);
                 return;
             }
             globais.flappyBird.update();
+            globais.chao.update();
         },
     }
 }
@@ -178,6 +211,8 @@ const Telas = {
 const loop = () => {
     telaAtiva.draw();
     telaAtiva.update();
+
+    frames += 1;
 
     window.requestAnimationFrame(loop);
 };
@@ -195,6 +230,7 @@ const mudaTela = (novaTela)=>{
     telaAtiva = novaTela;
 };
 
+globais.chao = new ChaoElement();
 globais.flappyBird = new FlappyBirdElement();
 mudaTela(Telas.INICIO);
 loop();
