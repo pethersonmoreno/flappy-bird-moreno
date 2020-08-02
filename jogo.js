@@ -5,6 +5,42 @@ sprites.src = './sprites.png';
 
 let frames = 0;
 
+class SquarePosition {
+    constructor({width, height, x, y}){
+        this.width = width;
+        this.height = height;
+        this.x = x;
+        this.y = y;
+    }
+    corners(){
+        return {
+            topLeft: { x: this.x, y: this.y },
+            topRight: { x: this.x + this.width, y: this.y },
+            bottomLeft: { x: this.x, y: this.y + this.height },
+            bottomRight: { x: this.x + this.width, y: this.y + this.height },
+        }
+    }
+    isPointInCorners(point, corners){
+        return (
+            point.x >= corners.topLeft.x
+            && point.x <= corners.bottomRight.x
+            && point.y >= corners.topLeft.y
+            && point.y <= corners.bottomRight.y
+        );
+    }
+    intersect(otherSquare){
+        const selfCorners = this.corners();
+        const otherCorners = otherSquare.corners();
+        return (
+            this.isPointInCorners(selfCorners.topLeft, otherCorners)
+            || this.isPointInCorners(selfCorners.topRight, otherCorners)
+            || this.isPointInCorners(selfCorners.bottomLeft, otherCorners)
+            || this.isPointInCorners(selfCorners.bottomRight, otherCorners)
+        );
+    }
+}
+
+
 let timeoutAudio;
 class AudioPlay{
     constructor(src){
@@ -76,14 +112,6 @@ class PlanoDeFundoElement extends DrawableElement{
         contexto.fillRect(0, 0, canvas.width, canvas.height);
         super.draw();
     }
-};
-const hasCollision = (flappyBird, chao)=>{
-    const flappyBirdY = flappyBird.player.y + flappyBird.player.height;
-    const chaoY = chao.parts[0].y;
-    if( flappyBirdY >= chaoY){
-        return true;
-    }
-    return false;
 };
 class FlappyBirdElement{
     constructor(){
@@ -158,6 +186,72 @@ class ChaoElement extends DrawableElement{
     }
 }
 
+class CanosElement{
+    constructor(){
+        this.width = 52;
+        this.height = 400;
+        this.floor = {
+            spriteX: 0,
+            spriteY: 169,
+        };
+        this.sky = {
+            spriteX: 52,
+            spriteY: 169,
+        };
+        this.space = 90;
+        this.pares = [];
+    }
+    draw(){
+        this.pares.forEach(par => {
+            const yRandom = par.y;
+            const canoSkyX = par.x;
+            const canoSkyY = yRandom;
+            const canoSky = {
+                ...this.sky,
+                x: canoSkyX,
+                y: canoSkyY,
+                width: this.width,
+                height: this.height,
+            };
+
+            const canoFloorX = par.x;
+            const canoFloorY = canoSky.y + canoSky.height + this.space;
+            const canoFloor = {
+                ...this.floor,
+                x: canoFloorX,
+                y: canoFloorY,
+                width: this.width,
+                height: this.height,
+            };
+            drawElement(contexto, canoSky);
+            drawElement(contexto, canoFloor);
+        });
+    }
+    generateCanos(){
+        const framesInterval = 100;
+        const intervalDone = frames%framesInterval===0;
+        if(intervalDone){
+            this.pares.push({ x: canvas.width, y: -150 * (Math.random()+1) });
+        }
+    }
+    movimentCanos(){
+        this.pares.forEach((par)=>{
+            par.x -= 2;
+        });
+    }
+    isVisible(x){
+        return x >= -this.width;
+    }
+    recycleCanos(){
+        this.pares = this.pares.filter(par => this.isVisible(par.x));
+    }
+    update(){
+        this.generateCanos();
+        this.movimentCanos();
+        this.recycleCanos();
+    }
+}
+
 const mensagemGetReady = new DrawableElement([{
     spriteX: 134,
     spriteY: 0,
@@ -187,23 +281,61 @@ const Telas = {
     JOGO: {
         start() {
             globais.flappyBird = new FlappyBirdElement();
+            globais.canos = new CanosElement();
         },
         draw() {
             planoDeFundo.draw();
+            globais.canos.draw();
             globais.chao.draw();
             globais.flappyBird.draw();
         },
         click() {
             globais.flappyBird.jump();
         },
+        hasCollisionFloor(){
+            const flappyBirdY = globais.flappyBird.player.y + globais.flappyBird.player.height;
+            const chaoY = globais.chao.parts[0].y;
+            return flappyBirdY >= chaoY;
+        },
+        hasCollisionCanos(){
+            const playerSquare = new SquarePosition({
+                width: globais.flappyBird.player.width,
+                height: globais.flappyBird.player.height,
+                x: globais.flappyBird.player.x,
+                y: globais.flappyBird.player.y,
+            });
+            const parCollided = globais.canos.pares.find(par => {
+                const parSquareSky = new SquarePosition({
+                    width: globais.canos.width,
+                    height: globais.canos.height,
+                    x: par.x,
+                    y: par.y,
+                });
+                if(playerSquare.intersect(parSquareSky)){
+                    return true;
+                }
+                const parSquareFloor = new SquarePosition({
+                    width: globais.canos.width,
+                    height: globais.canos.height,
+                    x: par.x,
+                    y: par.y + globais.canos.height + globais.canos.space,
+                });
+                return playerSquare.intersect(parSquareFloor);
+            });
+            return !!parCollided;
+        },
+        hasCollision(){
+            return this.hasCollisionFloor() || this.hasCollisionCanos();
+        },
         update() {
-            if (hasCollision(globais.flappyBird, globais.chao)){
+            if (this.hasCollision()){
                 sounds.hit.play();
                 mudaTela(Telas.INICIO);
                 return;
             }
             globais.flappyBird.update();
             globais.chao.update();
+            globais.canos.update();
         },
     }
 }
@@ -231,6 +363,7 @@ const mudaTela = (novaTela)=>{
 };
 
 globais.chao = new ChaoElement();
+globais.canos = new CanosElement();
 globais.flappyBird = new FlappyBirdElement();
 mudaTela(Telas.INICIO);
 loop();
