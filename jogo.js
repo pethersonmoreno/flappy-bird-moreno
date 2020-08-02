@@ -408,6 +408,56 @@ const Telas = {
             const chaoY = globais.chao.parts[0].y;
             return flappyBirdY >= chaoY;
         },
+        hasCollisionCanos(){
+            const playerSquare = new SquarePosition({
+                width: globais.flappyBird.player.width,
+                height: globais.flappyBird.player.height,
+                x: globais.flappyBird.player.x,
+                y: globais.flappyBird.player.y,
+            });
+            const parCollided = globais.canos.pares.find(par => {
+                const parSquareSky = new SquarePosition({
+                    width: globais.canos.width,
+                    height: globais.canos.height,
+                    x: par.x,
+                    y: par.y,
+                });
+                if(playerSquare.intersect(parSquareSky)){
+                    return true;
+                }
+                const parSquareFloor = new SquarePosition({
+                    width: globais.canos.width,
+                    height: globais.canos.height,
+                    x: par.x,
+                    y: par.y + globais.canos.height + par.space,
+                });
+                return playerSquare.intersect(parSquareFloor);
+            });
+            return !!parCollided;
+        },
+        hasCollisionOnCanos(){
+            const playerSquare = new SquarePosition({
+                width: globais.flappyBird.player.width,
+                height: globais.flappyBird.player.height,
+                x: globais.flappyBird.player.x,
+                y: globais.flappyBird.player.y,
+            });
+            const parCollided = globais.canos.pares.find(par => {
+                const spaceIgnore = globais.canos.width*0.2;
+                const parSquareFloor = new SquarePosition({
+                    width: globais.canos.width-spaceIgnore,
+                    height: globais.flappyBird.player.height,
+                    x: par.x+(spaceIgnore/2),
+                    y: par.y + globais.canos.height + par.space,
+                });
+                const result = (
+                    parSquareFloor.intersect(playerSquare)
+                    || playerSquare.intersect(parSquareFloor)
+                );
+                return result;
+            });
+            return !!parCollided;
+        }
     },
     INICIO: {
         draw() {
@@ -441,14 +491,17 @@ const Telas = {
             currentScore.draw();
             bestScore.draw();
         },
+        hasCollisionOnFloorOrCanos(){
+            return Telas.helpers.hasCollisionFloor() || Telas.helpers.hasCollisionOnCanos();
+        },
         click() {
-            if(this.waitingViewGameOver || !Telas.helpers.hasCollisionFloor()){
+            if(this.waitingViewGameOver || !this.hasCollisionOnFloorOrCanos()){
                 return;
             }
             mudaTela(Telas.JOGO);
         },
         update() {
-            if(!Telas.helpers.hasCollisionFloor()){
+            if(!this.hasCollisionOnFloorOrCanos()){
                 globais.flappyBird.update();
                 this.degreesDying += 1;
             }
@@ -489,35 +542,8 @@ const Telas = {
         click() {
             globais.flappyBird.jump();
         },
-        hasCollisionCanos(){
-            const playerSquare = new SquarePosition({
-                width: globais.flappyBird.player.width,
-                height: globais.flappyBird.player.height,
-                x: globais.flappyBird.player.x,
-                y: globais.flappyBird.player.y,
-            });
-            const parCollided = globais.canos.pares.find(par => {
-                const parSquareSky = new SquarePosition({
-                    width: globais.canos.width,
-                    height: globais.canos.height,
-                    x: par.x,
-                    y: par.y,
-                });
-                if(playerSquare.intersect(parSquareSky)){
-                    return true;
-                }
-                const parSquareFloor = new SquarePosition({
-                    width: globais.canos.width,
-                    height: globais.canos.height,
-                    x: par.x,
-                    y: par.y + globais.canos.height + par.space,
-                });
-                return playerSquare.intersect(parSquareFloor);
-            });
-            return !!parCollided;
-        },
         hasCollision(){
-            return Telas.helpers.hasCollisionFloor() || this.hasCollisionCanos();
+            return Telas.helpers.hasCollisionFloor() || Telas.helpers.hasCollisionCanos();
         },
         update() {
             if (this.hasCollision()){
