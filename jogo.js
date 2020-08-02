@@ -59,27 +59,84 @@ class PlanoDeFundoElement extends DrawableElement{
     }
 };
 
+class FlappyBirdElement extends DrawableElement{
+    constructor(){
+        super([{
+            spriteX: 0,
+            spriteY: 0,
+            width: 33,
+            height: 24,
+            x: 10,
+            y: 50,
+        }]);
+        this.gravidade = 0.25;
+        this.velocidade = 0;
+    }
+    update(){
+        this.velocidade += this.gravidade;
+        this.parts[0].y += this.velocidade;
+    }
+};
+
 const planoDeFundo = new PlanoDeFundoElement();
 
 const chao = new DrawableElement([buildChaoPart(0), buildChaoPart(224)]);
 
-const flappyBird = new DrawableElement([{
-    spriteX: 0,
+const flappyBird = new FlappyBirdElement();
+
+const mensagemGetReady = new DrawableElement([{
+    spriteX: 134,
     spriteY: 0,
-    width: 33,
-    height: 24,
-    x: 10,
+    width: 174,
+    height: 152,
+    x: (canvas.width / 2) - 174 / 2,
     y: 50,
 }]);
 
-const loop = () => {
-    planoDeFundo.draw();
-    chao.draw();
-    flappyBird.draw();
+let telaAtiva = {};
+const mudaTela = (novaTela)=>{
+    telaAtiva = novaTela;
+};
 
-    flappyBird.parts[0].y += 1;
+const Telas = {
+    INICIO: {
+        draw() {
+            planoDeFundo.draw();
+            chao.draw();
+            flappyBird.draw();
+            mensagemGetReady.draw();
+        },
+        click() {
+            mudaTela(Telas.JOGO);
+        },
+        update() {
+
+        },
+    },
+    JOGO: {
+        draw() {
+            planoDeFundo.draw();
+            chao.draw();
+            flappyBird.draw();
+        },
+        update() {
+            flappyBird.update();
+        },
+    }
+}
+
+const loop = () => {
+    telaAtiva.draw();
+    telaAtiva.update();
 
     window.requestAnimationFrame(loop);
 };
 
+window.addEventListener('click', ()=>{
+    if(telaAtiva.click){
+        telaAtiva.click();
+    }
+});
+
+mudaTela(Telas.INICIO);
 loop();
