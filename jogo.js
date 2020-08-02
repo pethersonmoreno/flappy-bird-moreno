@@ -1,9 +1,9 @@
-const mount = (parentElement, userInteractionElement = window)=>{
+const mount = (parentElement, urlBase = '.', userInteractionElement = window)=>{
 
     console.log('[Moreno] Flappy Bird');
 
     const sprites = new Image();
-    sprites.src = './sprites.png';
+    sprites.src = `${urlBase}/sprites.png`;
 
     let frames = 0;
 
@@ -60,10 +60,10 @@ const mount = (parentElement, userInteractionElement = window)=>{
     }
 
     const sounds = {
-        hit: new AudioPlay('./efeitos/hit.wav'),
-        fall: new AudioPlay('./efeitos/fall.wav'),
-        scored: new AudioPlay('./efeitos/scored.wav'),
-        jump: new AudioPlay('./efeitos/jump.wav'),
+        hit: new AudioPlay(`${urlBase}/efeitos/hit.wav`),
+        fall: new AudioPlay(`${urlBase}/efeitos/fall.wav`),
+        scored: new AudioPlay(`${urlBase}/efeitos/scored.wav`),
+        jump: new AudioPlay(`${urlBase}/efeitos/jump.wav`),
     };
 
     const canvas = document.createElement('canvas');
