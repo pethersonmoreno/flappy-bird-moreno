@@ -172,6 +172,41 @@ class FlappyBirdElement{
             this.player = { ...this.player, ...this.moviments[this.currentMoviment] };
         }
     }
+    canMove(){
+        if(this.player.y + this.velocidade < 0){
+            return false;
+        }
+        const playerSquareBefore = new SquarePosition({
+            width: this.player.width,
+            height: this.player.height,
+            x: this.player.x,
+            y: this.player.y,
+        });
+        const playerSquareAfter = new SquarePosition({
+            width: this.player.width,
+            height: this.player.height,
+            x: this.player.x,
+            y: this.player.y + this.velocidade,
+        });
+        const parCollided = globais.canos.pares.find(par => {
+            const parSquareSky = new SquarePosition({
+                width: globais.canos.width,
+                height: globais.canos.height,
+                x: par.x,
+                y: par.y,
+            });
+            const collidedBefore = (
+                playerSquareBefore.intersect(parSquareSky)
+                || parSquareSky.intersect(playerSquareBefore)
+            );
+            const collidedAfter = (
+                playerSquareAfter.intersect(parSquareSky)
+                || parSquareSky.intersect(playerSquareAfter)
+            );
+            return collidedAfter && !collidedBefore;
+        });
+        return !parCollided;
+    }
     update(){
         this.updateMoviment();
         const oldVelocidade = this.velocidade;
@@ -179,7 +214,9 @@ class FlappyBirdElement{
         if(oldVelocidade <= 0 && this.velocidade > 0){
             sounds.fall.play();
         }
-        this.player.y += this.velocidade;
+        if(this.canMove()){
+            this.player.y += this.velocidade;
+        }
     }
 };
 
