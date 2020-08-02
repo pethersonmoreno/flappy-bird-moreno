@@ -67,6 +67,15 @@ const sounds = {
 const canvas = document.querySelector('canvas');
 const contexto = canvas.getContext('2d');
 
+const drawImageRotated = (ctx, image, spriteX, spriteY, spriteWidth, spriteHeight, x, y, w, h, degrees) => {
+    ctx.save();
+    ctx.translate(x+w/2, y+h/2);
+    ctx.rotate(degrees*Math.PI/180.0);
+    ctx.translate(-x-w/2, -y-h/2);
+    ctx.drawImage(image, spriteX, spriteY, spriteWidth, spriteHeight, x, y, w, h);
+    ctx.restore();
+};
+
 const globais = {};
 
 
@@ -138,8 +147,16 @@ class FlappyBirdElement{
         this.gravidade += 0.01;
         this.player.jump = this.gravidade * proportion;
     }
-    draw(){
-        drawElement(contexto, this.player);
+    draw(degrees = 0){
+        drawImageRotated(
+            contexto, 
+            sprites, 
+            this.player.spriteX, this.player.spriteY, 
+            this.player.width, this.player.height, 
+            this.player.x, this.player.y, 
+            this.player.width, this.player.height, 
+            degrees
+        );
     }
     jump() {
         this.velocidade = -this.player.jump;
@@ -360,6 +377,13 @@ const bestScore = new ScoreElement({
 });
 
 const Telas = {
+    helpers: {
+        hasCollisionFloor(){
+            const flappyBirdY = globais.flappyBird.player.y + globais.flappyBird.player.height;
+            const chaoY = globais.chao.parts[0].y;
+            return flappyBirdY >= chaoY;
+        },
+    },
     INICIO: {
         draw() {
             planoDeFundo.draw();
@@ -376,6 +400,7 @@ const Telas = {
     },
     GAME_OVER: {
         start() {
+            this.degreesDying = 0;
             this.waitingViewGameOver = true;
             setTimeout(()=>{
                 this.waitingViewGameOver = false;
@@ -385,19 +410,23 @@ const Telas = {
             planoDeFundo.draw();
             globais.canos.draw();
             globais.chao.draw();
-            globais.flappyBird.draw();
+            globais.flappyBird.draw(this.degreesDying);
             mensagemGameOver.draw();
             medal.current.draw();
             currentScore.draw();
             bestScore.draw();
         },
         click() {
-            if(this.waitingViewGameOver){
+            if(this.waitingViewGameOver || !Telas.helpers.hasCollisionFloor()){
                 return;
             }
             mudaTela(Telas.JOGO);
         },
         update() {
+            if(!Telas.helpers.hasCollisionFloor()){
+                globais.flappyBird.update();
+                this.degreesDying += 1;
+            }
         },
     },
     JOGO: {
@@ -433,11 +462,6 @@ const Telas = {
         click() {
             globais.flappyBird.jump();
         },
-        hasCollisionFloor(){
-            const flappyBirdY = globais.flappyBird.player.y + globais.flappyBird.player.height;
-            const chaoY = globais.chao.parts[0].y;
-            return flappyBirdY >= chaoY;
-        },
         hasCollisionCanos(){
             const playerSquare = new SquarePosition({
                 width: globais.flappyBird.player.width,
@@ -466,7 +490,7 @@ const Telas = {
             return !!parCollided;
         },
         hasCollision(){
-            return this.hasCollisionFloor() || this.hasCollisionCanos();
+            return Telas.helpers.hasCollisionFloor() || this.hasCollisionCanos();
         },
         update() {
             if (this.hasCollision()){
