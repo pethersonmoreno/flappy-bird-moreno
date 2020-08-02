@@ -220,7 +220,7 @@ class CanosElement{
             spriteX: 52,
             spriteY: 169,
         };
-        this.space = 90;
+        this.space = 250;
         this.pares = [];
     }
     draw(){
@@ -237,7 +237,7 @@ class CanosElement{
             };
 
             const canoFloorX = par.x;
-            const canoFloorY = canoSky.y + canoSky.height + this.space;
+            const canoFloorY = canoSky.y + canoSky.height + par.space;
             const canoFloor = {
                 ...this.floor,
                 x: canoFloorX,
@@ -249,11 +249,14 @@ class CanosElement{
             drawElement(contexto, canoFloor);
         });
     }
+    increaseDifficulty(){
+        this.space -= 3;
+    }
     generateCanos(){
         const framesInterval = 100;
         const intervalDone = frames%framesInterval===0;
         if(intervalDone){
-            this.pares.push({ x: canvas.width, y: -150 * (Math.random()+1) });
+            this.pares.push({ x: canvas.width, y: -this.space * (Math.random()+1), space: this.space });
         }
     }
     movimentCanos(){
@@ -438,11 +441,13 @@ const Telas = {
                 currentScore.value += 1;
                 sounds.scored.play();
                 globais.flappyBird.increaseDifficulty();
+                globais.canos.increaseDifficulty();
             }, 1000);
         },
         end() {
             clearInterval(this.intervalScore);
             if(currentScore.value >= bestScore.value){
+                bestScore.value = currentScore.value;
                 medal.current = medal.best;
             } else if(currentScore.value >= 30){
                 medal.current = medal.hard;
@@ -483,7 +488,7 @@ const Telas = {
                     width: globais.canos.width,
                     height: globais.canos.height,
                     x: par.x,
-                    y: par.y + globais.canos.height + globais.canos.space,
+                    y: par.y + globais.canos.height + par.space,
                 });
                 return playerSquare.intersect(parSquareFloor);
             });
