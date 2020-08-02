@@ -137,15 +137,16 @@ class FlappyBirdElement{
             height: 24,
             x: 10,
             y: 50,
-            jump: 2,
+            jump: null,
         };
-        this.gravidade = 0.1;
+        this.proportionJump = 19;
+        this.gravidade = 0.25;
         this.velocidade = 0;
+        this.player.jump = this.gravidade * this.proportionJump;
     }
     increaseDifficulty(){
-        const proportion = this.player.jump / this.gravidade;
-        this.gravidade += 0.01;
-        this.player.jump = this.gravidade * proportion;
+        this.gravidade += 0.001;
+        this.player.jump = this.gravidade * this.proportionJump;
     }
     draw(degrees = 0){
         drawImageRotated(
@@ -250,7 +251,7 @@ class CanosElement{
         });
     }
     increaseDifficulty(){
-        this.space -= 3;
+        this.space -= 5;
     }
     generateCanos(){
         const framesInterval = 100;
@@ -277,14 +278,35 @@ class CanosElement{
     }
 }
 
-const mensagemGetReady = new DrawableElement([{
-    spriteX: 134,
-    spriteY: 0,
-    width: 174,
-    height: 152,
-    x: (canvas.width / 2) - 174 / 2,
-    y: 50,
-}]);
+class MensagemGetReady extends DrawableElement{
+    constructor(){
+        super([{
+            spriteX: 134,
+            spriteY: 0,
+            width: 174,
+            height: 152,
+            x: (canvas.width / 2) - 174 / 2,
+            y: 50,
+        }]);
+    }
+    drawText(text, x, y){
+        contexto.textAlign = "center";
+        contexto.font = "bold 17px Arial";
+        contexto.strokeStyle = 'white';
+        contexto.lineWidth = 3;
+        contexto.strokeText(text, x, y);
+        contexto.fillStyle = 'red';
+        contexto.fillText(text, x, y);
+    }
+    draw(){
+        super.draw();
+        const xCenter = canvas.width / 2;
+        this.drawText('SPACE', xCenter, 230);
+        this.drawText('ARROW UP', xCenter, 260);
+    }
+}
+
+const mensagemGetReady = new MensagemGetReady();
 const gameOverPosition = {
     x: (canvas.width / 2) - 226 / 2,
     y: 50,
@@ -449,9 +471,9 @@ const Telas = {
             if(currentScore.value >= bestScore.value){
                 bestScore.value = currentScore.value;
                 medal.current = medal.best;
-            } else if(currentScore.value >= 30){
+            } else if(currentScore.value >= 25){
                 medal.current = medal.hard;
-            } else if(currentScore.value >= 15){
+            } else if(currentScore.value >= 12){
                 medal.current = medal.medium;
             } else {
                 medal.current = medal.easy;
@@ -521,6 +543,16 @@ const loop = () => {
 
 window.addEventListener('click', ()=>{
     if(telaAtiva.click){
+        telaAtiva.click();
+    }
+});
+window.addEventListener ('keydown', (event) => {
+    const isSpace = event.code === 'Space';
+    const isArrowUp = event.code === 'ArrowUp';
+    const fireJump = isSpace || isArrowUp;
+    if(fireJump){
+        event.preventDefault();
+        event.stopPropagation();
         telaAtiva.click();
     }
 });
